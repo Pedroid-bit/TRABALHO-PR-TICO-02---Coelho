@@ -1,0 +1,94 @@
+# Trabalho Prática 02: Sistema de Gerenciamento de uma Locadora de Veículos
+
+Trabalho do Professor Luiz Lins - 01782564
+
+## 1. Classes identificadas
+
+- `Veiculo` (superclasse), `Carro`, `Moto` e `Caminhao`.
+- `Cliente` (superclasse), `PessoaFisica` e `PessoaJuridica`.
+- `ContratoLocacao`, `Condutor` e `Manutencao`.
+
+## 2. Atributos e métodos
+
+Os atributos dos tipos especializados complementam os herdados de suas respectivas superclasses.
+
+| Classe | Atributos | Métodos |
+| --- | --- | --- |
+| `Veiculo` | placa, modelo, ano, valor_diaria, disponivel | `calcular_valor(dias)`, `alterar_disponibilidade(status)` |
+| `Carro` | numero_portas, tipo_combustivel, possui_ar_condicionado | `calcular_valor(dias)`, `descrever_configuracao()` |
+| `Moto` | cilindradas, estilo, possui_bau | `calcular_valor(dias)`, `categoria_cnh_exigida()` |
+| `Caminhao` | capacidade_carga_kg, numero_eixos, tipo_carroceria | `validar_carga(peso_kg)`, `calcular_valor(dias)` |
+| `Cliente` | nome_razao_social, documento, telefone, endereco | `validar_documento()`, `atualizar_telefone(novo_telefone)` |
+| `PessoaFisica` | data_nascimento, email, profissao | `validar_documento()`, `validar_maioridade()` |
+| `PessoaJuridica` | nome_fantasia, inscricao_estadual, responsavel | `validar_documento()`, `atualizar_responsavel(nome)` |
+| `ContratoLocacao` | data_inicio, data_fim_prevista, valor_total, status | `calcular_valor_total()`, `finalizar()`, `cancelar()` |
+| `Condutor` | nome, numero_cnh, categoria_cnh, validade_cnh | `validar_cnh()`, `pode_conduzir(veiculo)` |
+| `Manutencao` | data, tipo_servico, custo, descricao | `registrar_servico()`, `atualizar_custo(novo_custo)` |
+
+`ContratoLocacao` também mantém referências ao cliente, ao veículo e ao condutor responsável. `documento` representa CPF em `PessoaFisica` e CNPJ em `PessoaJuridica`.
+
+## 3. Herança
+
+Há duas hierarquias de generalização/especialização:
+
+- `Veiculo` é a superclasse de `Carro`, `Moto` e `Caminhao`. Todos compartilham dados e operações comuns, enquanto cada tipo acrescenta características próprias.
+- `Cliente` é a superclasse de `PessoaFisica` e `PessoaJuridica`. Ambas compartilham cadastro e contato, mas possuem tipos de documento e dados específicos diferentes.
+
+## 4. Relacionamentos entre classes
+
+| Classes | Cardinalidade | Tipo | Justificativa |
+| --- | --- | --- | --- |
+| `Veiculo` - `Carro`, `Moto`, `Caminhao` | Um veículo é de um tipo especializado | Generalização (herança) | Os tipos especializados herdam os dados e comportamentos comuns de veículo. |
+| `Cliente` - `PessoaFisica`, `PessoaJuridica` | Um cliente é de um tipo especializado | Generalização (herança) | Pessoa física e jurídica são formas específicas de cliente. |
+| `Cliente` - `ContratoLocacao` | Um cliente pode ter zero ou vários contratos; cada contrato tem exatamente um cliente | Associação | O contrato referencia o cliente, mas o enunciado não diz que um objeto depende do ciclo de vida do outro. |
+| `Veiculo` - `ContratoLocacao` | Um veículo pode constar em vários contratos ao longo do tempo; cada contrato tem exatamente um veículo | Associação | O vínculo registra o aluguel. A regra adicional impede mais de um contrato ativo simultâneo para o mesmo veículo. |
+| `ContratoLocacao` - `Condutor` | Um contrato possui um condutor responsável | Composição | O condutor só existe associado ao contrato; removido o contrato, seus dados deixam de ter existência independente no sistema. |
+| `Veiculo` - `Manutencao` | Um veículo pode ter zero ou várias manutenções; cada manutenção pertence a exatamente um veículo | Associação | O enunciado define o vínculo, mas não define que o registro de manutenção deva ser destruído quando o veículo for excluído. |
+
+Não foi adotada agregação: o cenário não estabelece uma relação todo-parte com ciclo de vida independente. Em particular, pertencer a um único veículo, por si só, não determina composição; faltaria a regra de que a manutenção deixa de existir ao excluir o veículo.
+
+## 5. Implementação parcial: composição
+
+O contrato cria e mantém o condutor como parte de sua composição. O exemplo omite persistência e validações para destacar o vínculo entre os objetos.
+
+```python
+class Condutor:
+	def __init__(self, nome, numero_cnh, categoria_cnh):
+		self.nome = nome
+		self.numero_cnh = numero_cnh
+		self.categoria_cnh = categoria_cnh
+
+	def validar_cnh(self):
+		return bool(self.numero_cnh)
+
+	def pode_conduzir(self, categoria_veiculo):
+		categorias_por_veiculo = {
+			"carro": "B",
+			"moto": "A",
+			"caminhao": "C",
+		}
+		return categorias_por_veiculo.get(categoria_veiculo) == self.categoria_cnh
+
+
+class ContratoLocacao:
+	def __init__(self, data_inicio, data_fim_prevista, condutor_nome, condutor_cnh,
+				 condutor_categoria_cnh):
+		self.data_inicio = data_inicio
+		self.data_fim_prevista = data_fim_prevista
+		self.status = "ativo"
+		self.condutor = Condutor(condutor_nome, condutor_cnh, condutor_categoria_cnh)
+
+	def finalizar(self):
+		self.status = "finalizado"
+
+	def cancelar(self):
+		self.status = "cancelado"
+
+
+contrato = ContratoLocacao("2026-10-07", "2026-10-10", "Ana Silva", "12345678900", "B")
+print(contrato.condutor.nome)  # Ana Silva
+```
+
+Em Python, a composição é representada pela referência exclusiva do contrato ao condutor e pela criação deste dentro do contrato; a linguagem não impede que outro código guarde uma referência adicional ao objeto.
+
+
